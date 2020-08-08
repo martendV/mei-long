@@ -1,5 +1,5 @@
 import { Route } from './interfaces/router-interface.ts';
-import { serve } from 'https://deno.land/std@0.63.0/http/server.ts';
+import { listenAndServe } from 'https://deno.land/std@0.63.0/http/server.ts';
 import { Router } from './router.ts';
 
 export class Application {
@@ -19,9 +19,6 @@ export class Application {
     }
 
     public async start() {
-        const s = serve({ port: this.port, hostname: this.hostname });
-        for await (const req of s) {
-            this.router.route(req);
-        }
+        this.hostname ? listenAndServe({ port: this.port, hostname: this.hostname }, this.router.route) : listenAndServe({ port: this.port}, this.router.route);
     }
 }
