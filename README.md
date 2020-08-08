@@ -1,4 +1,4 @@
-<p align="center"><img src="https://image.flaticon.com/icons/svg/1494/1494163.svg" alt="alt text" width="64" height="64"></p>
+<p align="center"><img src="https://image.flaticon.com/icons/svg/1494/1494163.svg" alt="alt text" width="128" height="128"></p>
 <h2 align="center">mei-long</h2>
 <p align="center">REST Framework for Deno Standard Library Http</p>
 <h2>Acknowledgements</h2>
