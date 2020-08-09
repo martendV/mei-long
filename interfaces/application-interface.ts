@@ -1,4 +1,4 @@
-import { Routes, RouteGroup } from "./router-interface.ts";
+import { RouteGroup } from "./router-interface.ts";
 
 export interface ApplicationConfig {
   port: number;
