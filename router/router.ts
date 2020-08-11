@@ -20,7 +20,8 @@ export class Router {
         }
         const extendedRoute = {
           ...route,
-          url: routeGroup.urlPrefix + route.url,
+          url: this.prepareUrlPrefix(routeGroup.urlPrefix) +
+            this.checkRouteUrl(route.url),
           middlewares,
         };
         return extendedRoute;
@@ -47,7 +48,6 @@ export class Router {
   private async routeValidation(routeValidator: RouteValidator) {
     await this.validateUrl(routeValidator);
     await this.validateMethod(routeValidator);
-    await this.validateContentType(routeValidator);
     if (!this.validationFailed) {
       let params = new Map<string, string>();
       const route = this.routes.find((r) => {
@@ -91,14 +91,14 @@ export class Router {
     }
   }
 
-  private validateContentType(routeValidator: RouteValidator) {
-    const validContentType = routeValidator.request.headers.get("content-type");
-    if (!validContentType) {
-      this.validationFailed = true;
-      routeValidator.request.respond(
-        { status: 412, body: HttpErrors.get(412) },
-      );
+  private prepareUrlPrefix(urlPrefix: string): string {
+    return `/${urlPrefix.split("/").filter((val) => val !== "").join("/")}`;
+  }
+
+  private checkRouteUrl(routeUrl: string): string {
+    if (!routeUrl.startsWith("/") || !routeUrl.endsWith("/")) {
+      throw new Error("Path of the route has to start and end with a '/'!");
     }
-    //TODO: validate defined content-type for the route
+    return routeUrl;
   }
 }
