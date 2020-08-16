@@ -15,7 +15,7 @@ import {
   Routes,
   RouteGroup,
   HttpMethods,
-} from "https://raw.githubusercontent.com/martendV/mei-long/v1.0.0-alpha/mei-long.ts";
+} from "https://deno.land/x/mei_long/mei-long.ts";
 
 const apiV1Routes: Routes = [{
   method: HttpMethods.GET,
