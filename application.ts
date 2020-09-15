@@ -1,4 +1,4 @@
-import { listenAndServe } from "./deps.ts";
+import { listenAndServe, ServerRequest } from "./deps.ts";
 import { Router } from "./router/router.ts";
 import { ApplicationConfig } from "./interfaces/application-interface.ts";
 
@@ -17,8 +17,11 @@ export class Application {
     this.hostname
       ? listenAndServe(
         { port: this.port, hostname: this.hostname },
-        (req) => this.router.route(req),
+        (req: ServerRequest) => this.router.route(req),
       )
-      : listenAndServe({ port: this.port }, (req) => this.router.route(req));
+      : listenAndServe(
+        { port: this.port },
+        (req: ServerRequest) => this.router.route(req),
+      );
   }
 }
