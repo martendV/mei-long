@@ -1,7 +1,7 @@
 import { ServerRequest } from "../deps.ts";
 import { HttpErrors } from "../error-handling/errors.ts";
 import { HTTP_METHODS } from "../common/rest.standards.ts";
-import { RouteGroup, Routes } from "../interfaces/router-interface.ts";
+import { RouteGroup, Routes, Route } from "../interfaces/router-interface.ts";
 import { RouteValidator } from "./route-validator.ts";
 
 export class Router {
@@ -18,10 +18,10 @@ export class Router {
         if (route.middlewares) {
           middlewares.push(...route.middlewares);
         }
-        const extendedRoute = {
+        const extendedRoute: Route = {
           ...route,
-          url: this.prepareUrlPrefix(routeGroup.urlPrefix) +
-            this.checkRouteUrl(route.url),
+          path: this.prepareUrlPrefix(routeGroup.urlPrefix) +
+            this.checkRoutePath(route.path),
           middlewares,
         };
         return extendedRoute;
@@ -37,7 +37,7 @@ export class Router {
       if (route) {
         if (route.middlewares && route.middlewares.length > 0) {
           for await (const middleware of route.middlewares) {
-            await middleware(req);
+            await middleware(req, params);
           }
         }
         await route.callback(req, params);
@@ -49,7 +49,10 @@ export class Router {
     await this.validateUrl(routeValidator);
     await this.validateMethod(routeValidator);
     if (!this.validationFailed) {
-      let params = new Map<string, string>();
+      let params = {
+        path: new Map<string, string>(),
+        url: new Map<string, string>(),
+      };
       const route = this.routes.find((r) => {
         const urlParameterObject = routeValidator.matchParams(r);
         if (urlParameterObject.matches) {
@@ -95,10 +98,13 @@ export class Router {
     return `/${urlPrefix.split("/").filter((val) => val !== "").join("/")}`;
   }
 
-  private checkRouteUrl(routeUrl: string): string {
-    if (!routeUrl.startsWith("/") || !routeUrl.endsWith("/")) {
-      throw new Error("Path of the route has to start and end with a '/'!");
+  private checkRoutePath(routePath: string): string {
+    if (!routePath.startsWith("/")) {
+      routePath = "/" + routePath;
     }
-    return routeUrl;
+    if (!routePath.endsWith("/")) {
+      routePath = routePath + "/";
+    }
+    return routePath;
   }
 }

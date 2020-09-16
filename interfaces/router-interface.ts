@@ -1,15 +1,20 @@
 import { HttpMethods } from "../common/rest.standards.ts";
 import { ServerRequest } from "../deps.ts";
 
+export type Parameters = {
+  url: Map<string, string>;
+  path: Map<string, string>;
+};
+
 export type RouteCallback = (
   req: ServerRequest,
-  params: Map<string, string>,
+  params: Parameters,
 ) => unknown;
-export type Middleware = (req: ServerRequest) => unknown;
+export type Middleware = RouteCallback;
 
 export type Route = {
   method: HttpMethods | string;
-  url: string;
+  path: string;
   callback: RouteCallback;
   middlewares?: Middleware[];
 };
@@ -22,7 +27,12 @@ export type RouteGroup = {
   middlewares?: Middleware[];
 };
 
-export type UrlParameterObject = {
+export type ParameterObject = {
   url: string;
-  params: Map<string, string>;
+  params: Parameters;
+};
+
+export type UrlParamSplitRoute = {
+  route: string;
+  urlParamsRoute?: string;
 };
