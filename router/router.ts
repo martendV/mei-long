@@ -1,6 +1,6 @@
 import { ServerRequest } from "../deps.ts";
 import { HttpErrors } from "../error-handling/errors.ts";
-import { HTTP_METHODS } from "../common/rest.standards.ts";
+import { HTTP_METHODS, HttpMethods } from "../common/rest.standards.ts";
 import { RouteGroup, Routes, Route } from "../interfaces/router-interface.ts";
 import { RouteValidator } from "./route-validator.ts";
 
@@ -35,12 +35,26 @@ export class Router {
     if (routeAndParams) {
       const { route, params } = routeAndParams;
       if (route) {
-        if (route.middlewares && route.middlewares.length > 0) {
-          for await (const middleware of route.middlewares) {
-            await middleware(req, params);
+        let jsonBody = {};
+        if (
+          [HttpMethods.POST, HttpMethods.PUT, HttpMethods.PATCH].some(
+            (method) => method === route.method.toUpperCase(),
+          )
+        ) {
+          try {
+            jsonBody = JSON.parse(
+              new TextDecoder().decode(await Deno.readAll(req.body)),
+            );
+          } catch (error) {
+            jsonBody = error.message;
           }
         }
-        await route.callback(req, params);
+        if (route.middlewares && route.middlewares.length > 0) {
+          for await (const middleware of route.middlewares) {
+            await middleware(req, jsonBody, params);
+          }
+        }
+        await route.callback(req, jsonBody, params);
       }
     }
   }
@@ -84,7 +98,7 @@ export class Router {
 
   private async validateMethod(routeValidator: RouteValidator): Promise<void> {
     const validMethod = HTTP_METHODS.find((m) =>
-      m === routeValidator.request.method
+      m.toLowerCase() === routeValidator.request.method.toLowerCase()
     );
     if (!validMethod) {
       this.validationFailed = true;

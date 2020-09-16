@@ -8,6 +8,7 @@ export type Parameters = {
 
 export type RouteCallback = (
   req: ServerRequest,
+  jsonBody: any,
   params: Parameters,
 ) => unknown;
 export type Middleware = RouteCallback;
