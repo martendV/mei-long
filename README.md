@@ -95,7 +95,7 @@ type Route = {
 
 ### RouteCallback
 
-The `RouteCallback` is the function where your code (database operations, static data servings, etc.) will be written. You have access to the `ServerRequest` object of the Deno Standard HTTP Library. A little goody is, that you also have access to `params` which is a `Map<string,string>` and it stores all the parameters of the request.
+The `RouteCallback` is the function where your code (database operations, static data servings, etc.) will be written. You have access to the `ServerRequest` object of the Deno Standard HTTP Library. A little goody is, that you also have access to `params` which is an object with `path` and `url` as maps of `Map<string,string>`. All path and url parameters are stored there.
 
 For example:
 
@@ -104,7 +104,17 @@ For example:
 ```ts
 ...
     callback: (req, params) => {
-        req.respond({ body: `The user id is: ${params.get("id")}` });
+        req.respond({ body: `The user id is: ${params.path.get("id")}` });
+    }
+  ...
+```
+
+- The defined route `/user/` receives an url parameter `id` like the following `http://localhost:3003/user?id=123` or `http://localhost:3003/user/?id=123`
+
+```ts
+...
+    callback: (req, params) => {
+        req.respond({ body: `The user id is: ${params.url.get("id")}` });
     }
   ...
 ```
