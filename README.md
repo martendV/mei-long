@@ -19,7 +19,7 @@ import {
 
 const apiV1Routes: Routes = [{
   method: HttpMethods.GET,
-  url: "/",
+  path: "/",
   callback: (req) => {
     req.respond({ body: "HelloWorld" });
   },
@@ -80,14 +80,14 @@ Each `RouteGroup` has a different set of `Routes`. Routes are defined as an Arra
 
 A `Route` is simple what you would expect in any REST environment.
 - It got a `method`, that must be a valid HTTP method (You can also just use a string here, but using the `HttpMethods` enum is recommended)
-- An `url` (e.g. "/customer/123/")
+- An `path` (e.g. "/customer/123/")
 - A `callback` function that will simple pass through the `req` ("ServerRequest") object from the Deno Standard HTTP Library, while providing `params` ("Map<string,string>")
 - And `middlewares` which are also just passthrough functions like the `callback`
 
 ```ts
 type Route = {
   method: HttpMethods | string;
-  url: string;
+  path: string;
   callback: RouteCallback;
   middlewares?: Middleware[];
 };
@@ -99,20 +99,24 @@ The `RouteCallback` is the function where your code (database operations, static
 
 For example:
 
-- The defined route `/user/:id/` will with a call of `/user/123` will give you `123` as value of the key `user_id`
-
-The key string will be a combination of the parameter name and the previous url segment. Therefore you can use e.g. `id` more than once in your url.
-
-- `/group/:id/user/:id/` will give you `group_id` and `user_id`
-
-A special case is:
-
-- `/:id` will only provide you with `id` as key
+- The defined route `/user/:id/` will with a call of `/user/123` will give you `123` as value of the key `id`
 
 ```ts
 ...
     callback: (req, params) => {
-        req.respond({ body: `The user id is: ${params.get("user_id")}` });
+        req.respond({ body: `The user id is: ${params.get("id")}` });
+    }
+  ...
+```
+
+### JsonBody
+
+Since this is a JSON-based http router you will find a `jsonBody` object in your callback parameters, when you work with a `POST`, `PUT` or `PATCH` (more to follow).
+
+```ts
+...
+    callback: (req, jsonBody, _params) => {
+        req.respond({ body: `The cool json prop is: ${jsonBody.myCoolJsonProp}` });
     }
   ...
 ```
