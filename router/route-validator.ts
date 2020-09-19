@@ -1,10 +1,13 @@
 import {
   Route,
-  ParameterObject,
-  UrlParamSplitRoute,
+  PathStringArrayAndUrlParams,
   Parameters,
+  ValueIndex,
+  ValueIndexDynamic,
+  RouteParameterJsonBodyMatchesObject,
 } from "../interfaces/router-interface.ts";
 import { ServerRequest } from "../deps.ts";
+import { HttpMethods } from "../common/rest.standards.ts";
 
 export class RouteValidator {
   public request: ServerRequest;
@@ -19,34 +22,42 @@ export class RouteValidator {
       this.request.method === route.method;
   }
 
-  public matchParams(
+  public async matchParams(
     route: Route,
-  ): { matches: boolean; params: Parameters } {
-    const requestUrl = this.prepareIncomingRouteUrl(this.request.url);
-    const requestRouteArray = requestUrl.route.split("/");
-    const requestUrlParamsRouteArray = this.prepareUrlParamsRouteArray(
-      requestUrl.urlParamsRoute,
-    );
-    const routeArray = route.path.split("/");
-    if (requestRouteArray.length !== routeArray.length) {
-      return {
+  ): Promise<RouteParameterJsonBodyMatchesObject> {
+    if (this.request.method === route.method) {
+      const requestUrlAndParams = this.prepareIncomingRouteUrl(
+        this.request.url,
+      );
+      const routePathStringArray = this.prepareRoutePathStringArray(route.path);
+      if (
+        requestUrlAndParams.pathStringArray.length !==
+          routePathStringArray.length
+      ) {
+        return {
+          matches: false,
+          params: {
+            path: new Map<string, string>(),
+            url: new Map<string, string>(),
+          },
+          route,
+          jsonBody: undefined,
+        };
+      }
+      const params = this.matchRequestAndRoute(
+        requestUrlAndParams,
+        routePathStringArray,
+      );
+      const jsonBody = await this.parseJsonBody(route);
+      return params ? { matches: true, params, route, jsonBody } : {
         matches: false,
         params: {
           path: new Map<string, string>(),
           url: new Map<string, string>(),
         },
+        route,
+        jsonBody,
       };
-    }
-    const { url: parameterizedUrl, params } = this.getParameterObject(
-      requestRouteArray,
-      routeArray,
-      requestUrlParamsRouteArray,
-    );
-    if (
-      parameterizedUrl === requestUrl.route &&
-      this.request.method === route.method
-    ) {
-      return { matches: true, params };
     }
     return {
       matches: false,
@@ -54,61 +65,103 @@ export class RouteValidator {
         path: new Map<string, string>(),
         url: new Map<string, string>(),
       },
+      route,
+      jsonBody: undefined,
     };
   }
 
-  private getParameterObject(
-    requestRouteArray: string[],
-    routeArray: string[],
-    urlParamsRouteArray: string[],
-  ): ParameterObject {
+  private matchRequestAndRoute(
+    requestUrlAndParams: PathStringArrayAndUrlParams,
+    routePathStringArray: ValueIndexDynamic[],
+  ): Parameters | undefined {
     const pathParams = new Map<string, string>();
     const urlParams = new Map<string, string>();
-    const url = routeArray.map((val, index) => {
-      if (val.includes(":")) {
-        const parameter = requestRouteArray[index];
-        pathParams.set(
-          `${val.replace(":", "")}`,
-          requestRouteArray[index],
-        );
-        return parameter;
-      } else {
-        return val;
+    let match = true;
+    for (let i = 0; i < routePathStringArray.length; i++) {
+      if (
+        !routePathStringArray[i].dynamic &&
+        routePathStringArray[i].value !==
+          requestUrlAndParams.pathStringArray[i].value &&
+        routePathStringArray[i].index ===
+          requestUrlAndParams.pathStringArray[i].index
+      ) {
+        match = false;
       }
-    }).join("/");
-    if (urlParamsRouteArray.length > 0) {
-      urlParamsRouteArray.forEach((param) => {
-        const splitParamString = param.split("=");
-        if (splitParamString.length === 2) {
-          urlParams.set(splitParamString[0], splitParamString[1]);
-        }
-      });
+      if (
+        routePathStringArray[i].dynamic &&
+        routePathStringArray[i].index ===
+          requestUrlAndParams.pathStringArray[i].index
+      ) {
+        pathParams.set(
+          routePathStringArray[i].value.replace(":", ""),
+          requestUrlAndParams.pathStringArray[i].value,
+        );
+      }
     }
-    return { url, params: { url: urlParams, path: pathParams } };
+    if (match) {
+      if (requestUrlAndParams.urlParams) {
+        requestUrlAndParams.urlParams.forEach((k, v) => urlParams.set(k, v));
+      }
+      return { url: urlParams, path: pathParams };
+    } else {
+      return undefined;
+    }
   }
 
-  private prepareIncomingRouteUrl(requestRouteUrl: string): UrlParamSplitRoute {
+  private prepareIncomingRouteUrl(
+    requestRouteUrl: string,
+  ): PathStringArrayAndUrlParams {
+    const pathStringArray: ValueIndex[] = [];
     if (requestRouteUrl.includes("?")) {
       const splitRoute = requestRouteUrl.split("?");
-      const route = splitRoute[0].endsWith("/")
+      const pathString = splitRoute[0].endsWith("/")
         ? splitRoute[0]
         : splitRoute[0] + "/";
-      const urlParamsRoute = splitRoute[1];
-      return { route, urlParamsRoute };
+      pathString.split("/").forEach((value, index) => {
+        if (value !== "") {
+          pathStringArray.push({ value, index });
+        }
+      });
+      const urlParams = new URLSearchParams(splitRoute[1]);
+      return { pathStringArray, urlParams };
     } else {
-      const route = requestRouteUrl.endsWith("/")
-        ? requestRouteUrl
-        : requestRouteUrl + "/";
-      return { route };
+      requestRouteUrl.split("/").forEach((value, index) => {
+        if (value !== "") {
+          pathStringArray.push({ value, index });
+        }
+      });
+      return { pathStringArray };
     }
   }
 
-  private prepareUrlParamsRouteArray(urlParamsRoute?: string): string[] {
-    if (urlParamsRoute) {
-      const params = urlParamsRoute ? urlParamsRoute.split("&") : [];
-      return params;
-    } else {
-      return [];
+  private prepareRoutePathStringArray(routePath: string): ValueIndexDynamic[] {
+    const verifiedRoutePath = routePath.endsWith("/")
+      ? routePath
+      : routePath + "/";
+    const routePathStringArray: ValueIndexDynamic[] = [];
+    verifiedRoutePath.split("/").forEach((value, index) => {
+      if (value !== "") {
+        routePathStringArray.push(
+          { dynamic: value.includes(":"), value, index },
+        );
+      }
+    });
+    return routePathStringArray;
+  }
+
+  private async parseJsonBody(route: Route): Promise<any> {
+    if (
+      [HttpMethods.POST, HttpMethods.PUT, HttpMethods.PATCH].some(
+        (method) => method === route.method.toUpperCase(),
+      )
+    ) {
+      try {
+        return JSON.parse(
+          new TextDecoder().decode(await Deno.readAll(this.request.body)),
+        );
+      } catch (error) {
+        return error.message;
+      }
     }
   }
 }

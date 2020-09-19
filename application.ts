@@ -17,11 +17,11 @@ export class Application {
     this.hostname
       ? listenAndServe(
         { port: this.port, hostname: this.hostname },
-        (req: ServerRequest) => this.router.route(req),
+        async (req: ServerRequest) => await this.router.route(req),
       )
       : listenAndServe(
         { port: this.port },
-        (req: ServerRequest) => this.router.route(req),
+        async (req: ServerRequest) => await this.router.route(req),
       );
   }
 }

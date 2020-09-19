@@ -28,12 +28,33 @@ export type RouteGroup = {
   middlewares?: Middleware[];
 };
 
-export type ParameterObject = {
-  url: string;
-  params: Parameters;
+export interface ValueIndex {
+  value: string;
+  index: number;
+}
+
+export interface ValueIndexDynamic extends ValueIndex {
+  dynamic: boolean;
+}
+
+export type PathStringArrayAndUrlParams = {
+  pathStringArray: ValueIndex[];
+  urlParams?: URLSearchParams;
 };
 
-export type UrlParamSplitRoute = {
-  route: string;
-  urlParamsRoute?: string;
-};
+export interface RouteParameterObject {
+  params: Parameters;
+  route: Route;
+}
+
+export interface RouteParameterJsonBodyObject {
+  params: Parameters;
+  route: Route;
+  jsonBody: any;
+}
+
+export interface RouteParameterJsonBodyMatchesObject
+  extends RouteParameterObject {
+  matches: boolean;
+  jsonBody: any;
+}
